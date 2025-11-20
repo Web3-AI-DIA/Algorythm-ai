@@ -31,8 +31,9 @@ import {
   signInWithPopup,
   UserCredential,
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import { initiateEmailSignUp } from '@/firebase';
+import { ethers } from 'ethers';
 
 
 const formSchema = z.object({
@@ -50,6 +51,11 @@ const createUserDocument = async (userCred: UserCredential) => {
     const user = userCred.user;
     const userRef = doc(firestore, 'users', user.uid);
     
+    const userDoc = await getDoc(userRef);
+    if (userDoc.exists()) {
+      return; // User document already exists
+    }
+
     const userData = {
         id: user.uid,
         email: user.email,
@@ -64,9 +70,14 @@ const createUserDocument = async (userCred: UserCredential) => {
     await setDoc(userRef, userData, { merge: true });
 };
 
+const getSiweMessage = (address: string, chainId: number, nonce: string) => {
+    return `${window.location.host} wants you to sign in with your Ethereum account:\n${address}\n\nI accept the Algorythm AI Terms of Service: https://${window.location.host}/terms\n\nURI: https://${window.location.host}\nVersion: 1\nChain ID: ${chainId}\nNonce: ${nonce}\nIssued At: ${new Date().toISOString()}`;
+}
+
 export function SignupForm({ onLoginClick }: SignupFormProps) {
   const { toast } = useToast();
   const auth = getAuth();
+  const firestore = getFirestore();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -111,8 +122,46 @@ export function SignupForm({ onLoginClick }: SignupFormProps) {
     }
   };
 
-  const handleWeb3SignIn = () => {
-    toast({ title: 'Coming Soon!', description: 'Web3 wallet integration is under development.'});
+  const handleWeb3SignIn = async () => {
+    if (typeof window.ethereum === 'undefined') {
+        toast({ title: 'MetaMask not found', description: 'Please install MetaMask to use this feature.', variant: 'destructive'});
+        return;
+    }
+
+    try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const address = await signer.getAddress();
+        const { chainId } = await provider.getNetwork();
+
+        const userDocRef = doc(firestore, 'users', address);
+        const userDoc = await getDoc(userDocRef);
+
+        let nonce = userDoc.exists() ? userDoc.data().nonce : Math.random().toString(36).substring(2);
+
+        if (!userDoc.exists()) {
+            await setDoc(userDocRef, { 
+                id: address,
+                nonce,
+                credits: 5,
+                freeAudits: 5,
+                isAdmin: false,
+            }, { merge: true });
+        }
+
+        const message = getSiweMessage(address, Number(chainId), nonce);
+        const signature = await signer.signMessage(message);
+        
+        // This is a placeholder for a real server-side verification
+        console.log("Wallet address:", address);
+        console.log("Signature:", signature);
+        
+        toast({ title: 'Wallet Connected!', description: 'In a real app, this would sign you up. For now, this demonstrates the wallet signing flow.'});
+
+    } catch (error: any) {
+        console.error("Web3 sign-in error:", error);
+        toast({ title: 'Web3 Sign-In Failed', description: error.message, variant: 'destructive'});
+    }
   }
 
   const GoogleIcon = () => (

@@ -15,7 +15,7 @@ import { useUser } from '@/firebase';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { loadStripe } from '@stripe/stripe-js';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Zap } from 'lucide-react';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -30,6 +30,7 @@ type PricingCardProps = {
   isFeatured?: boolean;
   className?: string;
   credits: number;
+  nowPaymentsLink?: string;
 };
 
 export function PricingCard({
@@ -38,11 +39,12 @@ export function PricingCard({
   pricePeriod,
   description,
   features,
-  buttonText = 'Purchase',
+  buttonText = 'Purchase with Card',
   priceId,
   isFeatured = false,
   className,
   credits,
+  nowPaymentsLink,
 }: PricingCardProps) {
   const { user } = useUser();
   const { toast } = useToast();
@@ -80,7 +82,6 @@ export function PricingCard({
         successUrl: `${window.location.origin}/payment/success`,
         cancelUrl: `${window.location.origin}/payment/cancel`,
         clientReferenceId: user.uid,
-        // We pass the user's email to pre-fill the checkout form
         customerEmail: user.email || undefined,
       });
 
@@ -108,9 +109,19 @@ export function PricingCard({
     }
     
     return (
+      <div className="w-full space-y-2">
         <Button onClick={handlePurchase} disabled={isLoading} className={cn('w-full', isFeatured && 'bg-neon-yellow hover:bg-neon-yellow/90 text-black')}>
             {isLoading ? <Loader2 className="animate-spin" /> : buttonText}
         </Button>
+        {nowPaymentsLink && (
+           <Button asChild className="w-full" variant="secondary">
+                <Link href={nowPaymentsLink} target="_blank" rel="noopener noreferrer">
+                    <Zap className="mr-2 h-4 w-4" />
+                    Pay with Crypto
+                </Link>
+            </Button>
+        )}
+      </div>
     )
   }
 
