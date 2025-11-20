@@ -1,0 +1,304 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Algorythm AI platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User's display name."
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "URL of the user's profile picture."
+        },
+        "credits": {
+          "type": "number",
+          "description": "Number of credits the user has available."
+        },
+        "freeAudits": {
+          "type": "number",
+          "description": "Number of free smart contract audits the user has remaining."
+        },
+        "isAdmin": {
+          "type": "boolean",
+          "description": "Indicates if the user has administrative privileges."
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "credits",
+        "freeAudits"
+      ]
+    },
+    "Subscription": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Subscription",
+      "type": "object",
+      "description": "Represents a user's subscription details.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Subscription entity."
+        },
+        "startDate": {
+          "type": "string",
+          "description": "Start date of the subscription.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "End date of the subscription.",
+          "format": "date-time"
+        },
+        "planName": {
+          "type": "string",
+          "description": "Name of the subscription plan (e.g., 'Basic', 'Premium', 'Unlimited')."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: Subscription 1:1 User)"
+        }
+      },
+      "required": [
+        "id",
+        "startDate",
+        "endDate",
+        "planName",
+        "userId"
+      ]
+    },
+    "Project": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Project",
+      "type": "object",
+      "description": "Represents a project created by a user, such as a dApp, NFT collection, or cryptocurrency.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Project entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the project."
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of project (e.g., 'dApp', 'NFT', 'Cryptocurrency')."
+        },
+        "creationDate": {
+          "type": "string",
+          "description": "Date when the project was created.",
+          "format": "date-time"
+        },
+        "lastModifiedDate": {
+          "type": "string",
+          "description": "Date when the project was last modified.",
+          "format": "date-time"
+        },
+        "code": {
+          "type": "string",
+          "description": "Generated code for the project."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Project)"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "creationDate",
+        "lastModifiedDate",
+        "code",
+        "userId"
+      ]
+    },
+    "Checklist": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Checklist",
+      "type": "object",
+      "description": "Represents a checklist for a project.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Checklist entity."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Reference to Project. (Relationship: Project 1:N Checklist)"
+        },
+        "stepId": {
+          "type": "array",
+          "description": "References to Step. (Relationship: Checklist 1:N Step)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "stepId"
+      ]
+    },
+    "Step": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Step",
+      "type": "object",
+      "description": "Represents a single step in a checklist.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Step entity."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the checklist step."
+        },
+        "isCompleted": {
+          "type": "boolean",
+          "description": "Indicates whether the step has been completed."
+        }
+      },
+      "required": [
+        "id",
+        "description",
+        "isCompleted"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "google.com",
+      "github.com"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Uses path-based ownership for private user data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/subscriptions/{subscriptionId}",
+        "definition": {
+          "entityName": "Subscription",
+          "schema": {
+            "$ref": "#/backend/entities/Subscription"
+          },
+          "description": "Stores subscription details for each user. Uses path-based ownership. Ensures that only the user can access their subscription data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "subscriptionId",
+              "description": "The unique identifier for the subscription."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/projects/{projectId}",
+        "definition": {
+          "entityName": "Project",
+          "schema": {
+            "$ref": "#/backend/entities/Project"
+          },
+          "description": "Stores projects created by each user.  Uses path-based ownership, and includes denormalized 'userId' to avoid get() calls in security rules.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "projectId",
+              "description": "The unique identifier for the project."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/projects/{projectId}/checklists/{checklistId}",
+        "definition": {
+          "entityName": "Checklist",
+          "schema": {
+            "$ref": "#/backend/entities/Checklist"
+          },
+          "description": "Stores checklists associated with each project. Uses path-based ownership, and includes denormalized 'userId' and 'projectId' to avoid get() calls in security rules.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "projectId",
+              "description": "The unique identifier for the project."
+            },
+            {
+              "name": "checklistId",
+              "description": "The unique identifier for the checklist."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/projects/{projectId}/checklists/{checklistId}/steps/{stepId}",
+        "definition": {
+          "entityName": "Step",
+          "schema": {
+            "$ref": "#/backend/entities/Step"
+          },
+          "description": "Stores steps within each checklist. Uses path-based ownership, and includes denormalized 'userId', 'projectId', and 'checklistId' to avoid get() calls in security rules.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "projectId",
+              "description": "The unique identifier for the project."
+            },
+            {
+              "name": "checklistId",
+              "description": "The unique identifier for the checklist."
+            },
+            {
+              "name": "stepId",
+              "description": "The unique identifier for the step."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to ensure authorization independence, clarity, and scalability. User data and associated resources (projects, checklists, steps, and subscriptions) are organized in hierarchical paths under the `/users/{userId}` collection. This structure uses path-based ownership, making security rules simple and efficient, avoiding complex `get()` calls. The `projects`, `checklists` and `steps` collections denormalize user id. This means the `userId` is present in these documents for authorization purposes. This enables atomic operations (transactions/batches) and easy debugging. The structure facilitates secure `list` operations by segregating data based on ownership."
+  }
+}

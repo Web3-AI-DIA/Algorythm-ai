@@ -1,0 +1,22 @@
+
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Disallow any public read/write access by default
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Allow users to read and write to their own `nft-images` folder.
+    // The folder structure is `nft-images/{userId}/{projectId}/{imageName}`
+    match /nft-images/{userId}/{projectId}/{imageName} {
+      // A user can only write to their own folder.
+      allow write: if request.auth != null && request.auth.uid == userId;
+
+      // Any authenticated user can read the images, as they will have the download URL.
+      // You could tighten this to only the owner if NFTs are private: `if request.auth != null && request.auth.uid == userId;`
+      allow read: if request.auth != null;
+    }
+  }
+}

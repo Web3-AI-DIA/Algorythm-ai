@@ -1,0 +1,96 @@
+/**
+ * @fileoverview Firestore Security Rules for Algorythm AI Platform
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model. Each user has full control over their own data (profile, subscriptions, projects, checklists, and steps). No cross-user access is permitted except for designated admins.
+ *
+ * Data Structure:
+ * All user-related data is nested under `/users/{userId}`, creating a clear ownership hierarchy. Subcollections like `/subscriptions`, `/projects`, `/checklists`, and `/steps` inherit this ownership.
+ *
+ * Admin Access:
+ * Users with `isAdmin: true` in their user document (`/users/{userId}`) are granted special privileges to read all user and project data for administrative purposes. The ability to grant admin status is strictly controlled.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+    }
+
+    function isUserAdmin(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId)) &&
+             get(/databases/$(database)/documents/users/$(userId)).data.isAdmin == true;
+    }
+
+    function isRequestingUserAdmin() {
+      return request.auth != null && isUserAdmin(request.auth.uid);
+    }
+
+    /**
+     * @description Controls access to user profiles.
+     * Admins can read any user's profile. Users can read and update their own profile.
+     * Admin status can only be changed by an existing admin.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isRequestingUserAdmin();
+      allow list: if isRequestingUserAdmin();
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if (isOwner(userId) && request.resource.data.id == resource.data.id && request.resource.data.isAdmin == resource.data.isAdmin) ||
+                       (isRequestingUserAdmin() && request.resource.data.id == resource.data.id);
+      allow delete: if isExistingOwner(userId) || isRequestingUserAdmin();
+    }
+
+    /**
+     * @description Controls access to user subscriptions.
+     * Admins can read subscriptions, but ownership rules otherwise apply.
+     */
+    match /users/{userId}/subscriptions/{subscriptionId} {
+      allow get: if isOwner(userId) || isRequestingUserAdmin();
+      allow list: if isOwner(userId) || isRequestingUserAdmin();
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to user projects.
+     * Admins can read and delete any project.
+     */
+    match /users/{userId}/projects/{projectId} {
+      allow get: if isOwner(userId) || isRequestingUserAdmin();
+      allow list: if isOwner(userId) || isRequestingUserAdmin();
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId) || isRequestingUserAdmin();
+    }
+
+     /**
+      * @description Controls access to checklists.
+      * Admins can read checklists.
+      */
+    match /users/{userId}/projects/{projectId}/checklists/{checklistId} {
+      allow get: if isOwner(userId) || isRequestingUserAdmin();
+      allow list: if isOwner(userId) || isRequestingUserAdmin();
+      allow create: if isOwner(userId) && request.resource.data.projectId == projectId && request.resource.data.id == checklistId;
+      allow update: if isExistingOwner(userId) && request.resource.data.projectId == projectId && request.resource.data.id == checklistId;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to steps.
+     * Admins can read steps.
+     */
+    match /users/{userId}/projects/{projectId}/checklists/{checklistId}/steps/{stepId} {
+      allow get: if isOwner(userId) || isRequestingUserAdmin();
+      allow list: if isOwner(userId) || isRequestingUserAdmin();
+      allow create: if isOwner(userId) && request.resource.data.id == stepId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}
