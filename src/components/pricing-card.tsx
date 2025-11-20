@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -55,6 +54,17 @@ export function PricingCard({
         );
     }
     
+    if (publishableKey && buyButtonId && user) {
+        return (
+             <stripe-buy-button
+                buy-button-id={buyButtonId}
+                publishable-key={publishableKey}
+                client-reference-id={user.uid}
+             >
+            </stripe-buy-button>
+        )
+    }
+
     // Fallback for buttons without Stripe config
     return (
         <Button asChild className={cn('w-full', isFeatured && 'bg-accent hover:bg-accent/90 text-accent-foreground')} variant={isFeatured ? 'default' : 'outline'}>
