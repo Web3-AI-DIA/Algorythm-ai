@@ -38,11 +38,11 @@ export default function RootLayout({
       >
         <FirebaseClientProvider>
           <Header />
-          <main className="flex-1">{children}</main>
+          <main className="flex-1 py-8">{children}</main>
           <Footer />
           <Toaster />
         </FirebaseClientProvider>
-        <Script src="https://js.stripe.com/v3/buy-button.js" async />
+        <Script src="https://js.stripe.com/v3/" strategy="lazyOnload" />
       </body>
     </html>
   );

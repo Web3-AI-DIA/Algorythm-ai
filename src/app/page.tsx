@@ -4,61 +4,43 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { PricingCard } from '@/components/pricing-card';
+import { ArrowRight, Code, Cpu, Layers } from 'lucide-react';
 
 const freePlan = {
-    title: 'Free',
-    price: '$0',
-    description: 'Perfect for getting started and trying out the platform.',
-    features: ['✓ 5 Free Credits', '✓ 5 Free Smart Contract Audits', '✓ Standard Support'],
-    buttonText: 'Start for Free',
+    title: 'New User',
+    price: 'Free',
+    description: 'Get started and try the platform, on us.',
+    features: ['✓ 5 Free Credits', '✓ 5 Free Smart Contract Audits', '✓ Access to all builders'],
+    buttonText: 'Sign Up to Claim',
+    credits: 0,
+    priceId: ''
   };
 
-const publishableKey = "pk_live_51Rqu8B0fXapiKkQRecawly7P7AtORtYieMvi1u01XEvzoCc8vd176RWp7dwtR4DhkrNVCXQvbvHkkG5OLTDEqNJQ00zxK5Jd52";
-
-const plans = [
+const creditPacks = [
   {
-    title: 'Starter',
+    title: 'Starter Pack',
     price: '$25',
-    pricePeriod: '/month',
-    description: 'Perfect for trying out the platform and small projects.',
-    features: ['✓ 40 Credits/Month', '✓ Standard Support', '✓ 3 Projects'],
-    buttonText: 'Subscribe with Stripe',
-    buyButtonId: 'buy_btn_1SS6480fXapiKkQRYAkt5it0',
-    publishableKey: publishableKey,
-    nowPaymentsLink: 'https://nowpayments.io/payment/?iid=4542924405',
+    description: 'Perfect for a few small projects.',
+    features: ['✓ 40 Credits', '✓ One-time purchase', '✓ Standard Support'],
+    credits: 40,
+    priceId: process.env.STRIPE_STARTER_PACK_PRICE_ID,
   },
   {
-    title: 'Pro',
+    title: 'Pro Pack',
     price: '$50',
-    pricePeriod: '/month',
     description: 'Ideal for serious hobbyists and frequent users.',
-    features: ['✓ 100 Credits/Month', '✓ Priority Support', '✓ 10 Projects', '✓ Github integration for version control'],
-    buttonText: 'Subscribe with Stripe',
-    buyButtonId: 'buy_btn_1SEe7t0fXapiKkQRNADmtpsW',
-    publishableKey: publishableKey,
-    nowPaymentsLink: 'https://nowpayments.io/payment/?iid=5899479934',
+    features: ['✓ 100 Credits', '✓ One-time purchase', '✓ Priority Support'],
+    credits: 100,
+    isFeatured: true,
+    priceId: process.env.STRIPE_PRO_PACK_PRICE_ID,
   },
   {
-    title: 'Scale',
+    title: 'Scale Pack',
     price: '$100',
-    pricePeriod: '/month',
     description: 'For professionals and teams building at scale.',
-    features: ["✓ All of Pro's features", '✓ 250 credits/Month', '✓ Dedicated Support', '✓ Collaboration', '✓ 25 Projects'],
-    buttonText: 'Subscribe with Stripe',
-    buyButtonId: 'buy_btn_1SEeEs0fXapiKkQRgpqbFFQt',
-    publishableKey: publishableKey,
-    nowPaymentsLink: 'https://nowpayments.io/payment/?iid=6308736275',
-  },
-  {
-    title: 'Enterprise',
-    price: '$500',
-    pricePeriod: '/month',
-    description: 'Ultimate power for agencies and large-scale operations.',
-    features: ["✓ All of Scale's features", "✓ Unlimited Access", "✓ Highest Priority Support"],
-    buttonText: 'Subscribe with Stripe',
-    buyButtonId: 'buy_btn_1SEeKU0fXapiKkQR7MY5DF48',
-    publishableKey: publishableKey,
-    nowPaymentsLink: 'https://nowpayments.io/payment/?iid=4446014558',
+    features: ["✓ 250 credits", '✓ One-time purchase', '✓ Priority Support'],
+    credits: 250,
+    priceId: process.env.STRIPE_SCALE_PACK_PRICE_ID,
   },
 ];
 
@@ -68,66 +50,88 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <section className="relative w-full py-24 md:py-32 lg:py-40 xl:py-48 overflow-hidden">
+      <section className="relative w-full pt-24 md:pt-32 lg:pt-40 pb-12 md:pb-24 lg:pb-32 overflow-hidden">
         {heroImage && (
-          <Image
-            src={heroImage.imageUrl}
-            alt={heroImage.description}
-            data-ai-hint={heroImage.imageHint}
-            fill
-            className="object-cover z-0 opacity-20 animate-bg-pan"
-          />
+          <div className="absolute inset-0 z-0">
+            <Image
+              src={heroImage.imageUrl}
+              alt={heroImage.description}
+              data-ai-hint={heroImage.imageHint}
+              fill
+              className="object-cover opacity-10"
+              priority
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background" />
+          </div>
         )}
         <div className="container px-4 md:px-6 relative z-10">
-          <div className="grid gap-6 lg:grid-cols-1 lg:gap-x-12 xl:gap-x-16">
-            <div className="flex flex-col justify-center space-y-6 text-center">
-              <div className="space-y-4">
-                <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl font-headline bg-clip-text text-transparent bg-gradient-to-r from-accent via-blue-500 to-primary">
-                  Conversational Creation for the Decentralized Future
-                </h1>
-                <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
-                  Choose your builder and describe what you want to create. Our AI will handle the rest.
-                </p>
-              </div>
-               <div className="flex w-full max-w-sm items-center justify-center space-x-4 mx-auto">
-                <Button asChild size="lg">
-                  <Link href="/builder/dapp">dApp Builder</Link>
+          <div className="flex flex-col justify-center space-y-6 text-center items-center">
+            <div className="space-y-4 max-w-4xl">
+               <h1 className="text-4xl font-bold tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl font-headline bg-clip-text text-transparent bg-gradient-to-br from-neon-yellow via-neon-green to-electric-blue">
+                 Conversational Creation for the Decentralized Future
+               </h1>
+              <p className="mx-auto max-w-[700px] text-muted-foreground text-lg md:text-xl">
+                Simply describe your vision. Our AI-powered builders will generate the code, contracts, and collections for your next big idea on the blockchain.
+              </p>
+            </div>
+             <div className="flex flex-col sm:flex-row w-full max-w-sm items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4 mx-auto">
+              <Button asChild size="lg" className="w-full sm:w-auto">
+                <Link href="/dashboard">Get Started <ArrowRight className="ml-2 h-5 w-5"/></Link>
+              </Button>
+               <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">
+                  <Link href="#pricing">View Pricing</Link>
                 </Button>
-                <Button asChild size="lg">
-                  <Link href="/builder/nft">NFT Builder</Link>
-                </Button>
-                <Button asChild size="lg">
-                  <Link href="/builder/crypto">Crypto Builder</Link>
-                </Button>
-              </div>
             </div>
           </div>
         </div>
       </section>
+
+      <section className="py-12 md:py-24 lg:py-32 bg-background">
+          <div className="container px-4 md:px-6">
+              <div className="grid md:grid-cols-3 gap-8 text-center">
+                  <div className="flex flex-col items-center space-y-3">
+                      <div className="p-3 rounded-full bg-primary/10 border border-primary/20">
+                          <Cpu className="h-8 w-8 text-electric-blue"/>
+                      </div>
+                      <h3 className="text-xl font-bold font-headline">AI-Powered Builders</h3>
+                      <p className="text-muted-foreground">From dApps to NFT collections, describe your project in plain English and let our AI agents do the heavy lifting.</p>
+                  </div>
+                   <div className="flex flex-col items-center space-y-3">
+                      <div className="p-3 rounded-full bg-accent/10 border border-accent/20">
+                          <Code className="h-8 w-8 text-neon-green"/>
+                      </div>
+                      <h3 className="text-xl font-bold font-headline">Production-Ready Code</h3>
+                      <p className="text-muted-foreground">Receive well-structured, secure, and maintainable code in modern frameworks like React and Solidity.</p>
+                  </div>
+                   <div className="flex flex-col items-center space-y-3">
+                      <div className="p-3 rounded-full bg-yellow-500/10 border border-yellow-500/20">
+                          <Layers className="h-8 w-8 text-neon-yellow"/>
+                      </div>
+                      <h3 className="text-xl font-bold font-headline">Guided Deployment</h3>
+                      <p className="text-muted-foreground">Each builder provides a step-by-step checklist to guide you from generation to mainnet launch.</p>
+                  </div>
+              </div>
+          </div>
+      </section>
       
-      <section id="pricing" className="w-full py-12 md:py-24 lg:py-32 bg-background">
+      <section id="pricing" className="w-full py-12 md:py-24 lg:py-32">
         <div className="container px-4 md:px-6">
            <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline bg-clip-text text-transparent bg-gradient-to-r from-accent to-blue-500">Flexible Plans for Every Creator</h2>
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline bg-clip-text text-transparent bg-gradient-to-r from-neon-green to-electric-blue">Flexible Credit Packs</h2>
               <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Choose a credit package that fits your needs. All new users receive free credits to start building.
+                Purchase credits as you go. No subscriptions, no recurring fees. All new users receive free credits to start building.
               </p>
             </div>
           </div>
-          <div className="mt-20 grid grid-cols-1 gap-8 md:grid-cols-2 lg:flex lg:justify-center">
-             <div className="lg:col-span-1 flex">
-                <PricingCard {...freePlan} />
-            </div>
-            {plans.map((plan) => (
-              <div key={plan.title} className="lg:col-span-1 flex">
-                  <PricingCard {...plan} />
-              </div>
+          <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4 lg:items-start">
+             <PricingCard {...freePlan} />
+            {creditPacks.map((plan) => (
+              <PricingCard key={plan.title} {...plan} />
             ))}
           </div>
            <div className="mt-16 text-center text-sm text-muted-foreground">
             <p>Payments are securely processed by Stripe and NOWPayments.</p>
-            <p>You can use cryptocurrencies for your payments.</p>
           </div>
         </div>
       </section>
@@ -135,7 +139,7 @@ export default function Home() {
       <section className="w-full py-12 md:py-24 lg:py-32">
         <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
           <div className="space-y-3">
-            <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight font-headline bg-clip-text text-transparent bg-gradient-to-r from-accent to-blue-500">
+            <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight font-headline bg-clip-text text-transparent bg-gradient-to-r from-neon-green to-electric-blue">
               Ready to Start Building?
             </h2>
             <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
@@ -147,7 +151,7 @@ export default function Home() {
               <Link href="/signup">Sign Up Now</Link>
             </Button>
             <Button asChild variant="secondary" size="lg">
-              <Link href="/pricing">View Pricing</Link>
+              <Link href="/docs">Read the Docs</Link>
             </Button>
           </div>
         </div>

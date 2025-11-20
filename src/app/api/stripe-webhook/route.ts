@@ -13,10 +13,9 @@ const stripe = stripeSecretKey && stripeSecretKey !== 'sk_test_...' ? new Stripe
 
 // Maps Stripe Price IDs to credits
 const creditsPerPrice: { [key: string]: number } = {
-  // These will be populated from environment variables if they exist
-  [process.env.STRIPE_STARTER_PRICE_ID!]: 40,
-  [process.env.STRIPE_PRO_PRICE_ID!]: 100,
-  [process.env.STRIPE_SCALE_PRICE_ID!]: 250,
+  [process.env.STRIPE_STARTER_PACK_PRICE_ID!]: 40,
+  [process.env.STRIPE_PRO_PACK_PRICE_ID!]: 100,
+  [process.env.STRIPE_SCALE_PACK_PRICE_ID!]: 250,
 };
 
 export async function POST(req: NextRequest) {
@@ -41,9 +40,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
   }
 
-  // Handle the checkout.session.completed event
+  // Handle the checkout.session.completed event for one-time purchases
   if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
+    const session = event.data.object as Stripe.Checkout.Session;
+
+    // We only care about one-time payments for credit packs
+    if (session.mode !== 'payment') {
+      return NextResponse.json({ received: true, message: 'Skipping non-payment session.' });
+    }
 
     const userId = session.client_reference_id;
     if (!userId) {
@@ -83,6 +87,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Internal server error while updating user credits.' }, { status: 500 });
     }
   }
+
+  // Handle subscription events if you add them later
+  if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
+      // Logic for handling subscriptions can go here.
+      // For now, we are focusing on one-time credit packs.
+  }
+
 
   return NextResponse.json({ received: true });
 }
