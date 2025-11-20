@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { generateDAppPlan, generateDApp, GenerateDAppOutput } from '@/ai/flows/ai-driven-dapp-generation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -34,9 +35,17 @@ const deploymentChecklist = [
 function LivePreview({ code }: { code: string }) {
   const [Component, setComponent] = useState<React.FC | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
-  React.useEffect(() => {
-    if (code && (window as any).Babel && (window as any).ethers) {
+  useEffect(() => {
+    // Check if scripts are loaded
+    if ((window as any).Babel && (window as any).ethers) {
+      setIsReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isReady && code) {
       try {
         const fullCode = `
           const { useState, useEffect, useCallback } = React;
@@ -47,14 +56,12 @@ function LivePreview({ code }: { code: string }) {
             return Component();
           }
           
-          return <App />;
+          return React.createElement(App);
         `;
-        // Transpile JSX to JS
         const transformedCode = (window as any).Babel.transform(fullCode, { presets: ['react'] }).code;
+        const DynamicComponent = new Function('React', 'ethers', transformedCode);
         
-        // Create a function from the transpiled code
-        const DynamicComponent = new Function('React', 'ethers', transformedCode)(React, (window as any).ethers);
-        setComponent(() => DynamicComponent);
+        setComponent(() => DynamicComponent(React, (window as any).ethers));
         setError(null);
       } catch (e: any) {
         console.error("Error rendering live preview:", e);
@@ -62,20 +69,25 @@ function LivePreview({ code }: { code: string }) {
         setComponent(null);
       }
     }
-  }, [code]);
+  }, [code, isReady]);
 
   if (error) {
     return <div className="text-destructive-foreground p-4 bg-destructive rounded-md">{error}</div>;
   }
   
-  if (!Component) {
-    return <div className="text-muted-foreground">Loading preview...</div>;
+  if (!isReady || !Component) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
+        Loading Preview...
+      </div>
+    );
   }
 
   return (
-     <div className="w-full h-full p-4 bg-white rounded-md">
+     <div className="w-full h-full p-4 bg-white rounded-md text-black">
         <React.Suspense fallback={<div>Loading Preview...</div>}>
-            <Component />
+            {Component}
         </React.Suspense>
     </div>
   )
@@ -451,8 +463,8 @@ export default function DappBuilderPage() {
           </Card>
         </div>
       </div>
-      <Script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" strategy="afterInteractive" />
       <Script src="https://unpkg.com/@babel/standalone/babel.min.js" strategy="afterInteractive" />
+      <Script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" strategy="afterInteractive" />
     </>
   );
 }
