@@ -99,6 +99,14 @@ export function PricingCard({
     }
   };
 
+  const getNowPaymentsLink = () => {
+    if (!nowPaymentsLink || !user) return nowPaymentsLink;
+    // Append the user's ID as the order_id so we can identify them in the webhook
+    const url = new URL(nowPaymentsLink);
+    url.searchParams.set('order_id', user.uid);
+    return url.toString();
+  }
+
   const renderButton = () => {
     if (title === 'New User') {
         return (
@@ -115,7 +123,7 @@ export function PricingCard({
         </Button>
         {nowPaymentsLink && (
            <Button asChild className="w-full" variant="secondary">
-                <Link href={nowPaymentsLink} target="_blank" rel="noopener noreferrer">
+                <Link href={getNowPaymentsLink() || '#'} target="_blank" rel="noopener noreferrer">
                     <Zap className="mr-2 h-4 w-4" />
                     Pay with Crypto
                 </Link>

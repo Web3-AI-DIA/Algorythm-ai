@@ -24,6 +24,7 @@ const creditPacks = [
     features: ['✓ 40 Credits', '✓ One-time purchase', '✓ Standard Support'],
     credits: 40,
     priceId: process.env.STRIPE_STARTER_PACK_PRICE_ID,
+    nowPaymentsLink: process.env.NOWPAYMENTS_STARTER_PACK_LINK,
   },
   {
     title: 'Pro Pack',
@@ -33,6 +34,7 @@ const creditPacks = [
     credits: 100,
     isFeatured: true,
     priceId: process.env.STRIPE_PRO_PACK_PRICE_ID,
+    nowPaymentsLink: process.env.NOWPAYMENTS_PRO_PACK_LINK,
   },
   {
     title: 'Scale Pack',
@@ -41,6 +43,7 @@ const creditPacks = [
     features: ["✓ 250 credits", '✓ One-time purchase', '✓ Priority Support'],
     credits: 250,
     priceId: process.env.STRIPE_SCALE_PACK_PRICE_ID,
+    nowPaymentsLink: process.env.NOWPAYMENTS_SCALE_PACK_LINK,
   },
 ];
 
