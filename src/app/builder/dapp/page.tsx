@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Send, Sparkles, Clipboard, Check, FileCode, Eye, ListChecks, Bot, CreditCard } from 'lucide-react';
+import { Loader2, Send, Sparkles, Clipboard, Check, FileCode, Eye, ListChecks, Bot, CreditCard, Github } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -17,6 +17,8 @@ import { LoginForm } from '@/components/auth/login-form';
 import { SignupForm } from '@/components/auth/signup-form';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import Script from 'next/script';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type Step = 'initial' | 'plan' | 'generating' | 'result';
 type AuthModal = 'login' | 'signup' | null;
@@ -30,6 +32,112 @@ const deploymentChecklist = [
     { id: '6', 'label': 'Deploy front-end (e.g., Vercel, Firebase Hosting)' },
     { id: '7', label: 'Deploy smart contract to mainnet (Est. Cost: 1 credit per blockchain + gas fees)' },
 ];
+
+function GithubSyncDialog({ code }: { code: string }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [repoName, setRepoName] = useState('');
+    const [githubToken, setGithubToken] = useState('');
+    const [isSyncing, setIsSyncing] = useState(false);
+    const { toast } = useToast();
+
+    const handleSync = async () => {
+        if (!repoName || !githubToken) {
+            toast({
+                title: 'Missing Information',
+                description: 'Please provide a repository name and a GitHub token.',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        setIsSyncing(true);
+        try {
+            const response = await fetch('/api/github', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    repoName,
+                    githubToken,
+                    code,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to sync with GitHub.');
+            }
+
+            toast({
+                title: 'Sync Successful!',
+                description: (
+                    <p>
+                        Repository created: <a href={result.repoUrl} target="_blank" rel="noopener noreferrer" className="underline">{result.repoUrl}</a>
+                    </p>
+                )
+            });
+            setIsOpen(false);
+        } catch (error: any) {
+            toast({
+                title: 'Sync Failed',
+                description: error.message,
+                variant: 'destructive',
+            });
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline">
+                    <Github className="mr-2 h-4 w-4" /> Sync to GitHub
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Sync to GitHub</DialogTitle>
+                    <DialogDescription>
+                        Create a new GitHub repository with your generated dApp code.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="repo-name">New Repository Name</Label>
+                        <Input
+                            id="repo-name"
+                            placeholder="my-awesome-dapp"
+                            value={repoName}
+                            onChange={(e) => setRepoName(e.target.value)}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="github-token">GitHub Personal Access Token</Label>
+                        <Input
+                            id="github-token"
+                            type="password"
+                            placeholder="ghp_..."
+                            value={githubToken}
+                            onChange={(e) => setGithubToken(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Create a <a href="https://github.com/settings/tokens/new?scopes=repo" target="_blank" rel="noopener noreferrer" className="underline">new token</a> with `repo` permissions. This token is not stored.
+                        </p>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSync} disabled={isSyncing}>
+                        {isSyncing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Create Repository
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 function LivePreview({ code }: { code: string }) {
   const [Component, setComponent] = useState<React.FC | null>(null);
@@ -446,6 +554,7 @@ export default function DappBuilderPage() {
                 )}
                 {step === 'result' && (
                     <div className="flex justify-end gap-2 border-t pt-4">
+                        {result?.dAppCode && <GithubSyncDialog code={result.dAppCode} />}
                         <Button variant="outline" onClick={handleEdit}>Start Over</Button>
                     </div>
                 )}
