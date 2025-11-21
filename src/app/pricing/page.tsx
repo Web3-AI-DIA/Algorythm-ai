@@ -40,6 +40,15 @@ const creditPacks = [
     priceId: process.env.STRIPE_SCALE_PACK_PRICE_ID,
     nowPaymentsLink: process.env.NOWPAYMENTS_SCALE_PACK_LINK,
   },
+  {
+    title: 'Unlimited',
+    price: '$500',
+    description: 'For power users and enterprise teams.',
+    features: ["✓ Unlimited Credits", "✓ Dedicated Support", "✓ Custom Integrations"],
+    credits: -1, // Using -1 to represent unlimited
+    priceId: process.env.STRIPE_UNLIMITED_PACK_PRICE_ID,
+    nowPaymentsLink: process.env.NOWPAYMENTS_UNLIMITED_PACK_LINK,
+  },
 ];
 
 
@@ -54,7 +63,7 @@ export default function PricingPage() {
           Choose a credit package that fits your needs. No subscriptions, no recurring fees. All new users receive free credits to start building.
         </p>
       </div>
-       <div className="mt-20 grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4 lg:items-start">
+       <div className="mt-20 mx-auto grid max-w-md grid-cols-1 gap-8 lg:max-w-5xl lg:grid-cols-4">
          <PricingCard {...freePlan} />
         {creditPacks.map((plan) => (
            <PricingCard key={plan.title} {...plan} />
