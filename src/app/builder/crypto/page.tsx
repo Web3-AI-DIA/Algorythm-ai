@@ -28,7 +28,7 @@ import { Loader2, Sparkles, Bot, ListChecks, CreditCard } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, increment } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { LoginForm } from '@/components/auth/login-form';
 import { SignupForm } from '@/components/auth/signup-form';
@@ -166,14 +166,14 @@ export default function CryptoBuilderPage() {
 
     setStep('plan');
     try {
-      await updateDoc(userDocRef, { credits: userData.credits - planCreditCost });
+      await updateDoc(userDocRef, { credits: increment(-planCreditCost) });
       const generatedPlan = await generateCryptocurrencyPlan(values.description);
       setPlan(generatedPlan);
       toast({ title: 'Plan Generated!', description: `${planCreditCost} credits have been deducted.` });
     } catch (error) {
       console.error(error);
       // Re-add credits if plan generation fails
-      await updateDoc(userDocRef, { credits: userData.credits });
+      await updateDoc(userDocRef, { credits: increment(planCreditCost) });
       toast({
         title: 'Error',
         description: 'Failed to generate a plan. Please try again. Your credits have not been deducted.',
@@ -201,7 +201,7 @@ export default function CryptoBuilderPage() {
 
     setStep('generating');
     try {
-      await updateDoc(userDocRef, { credits: userData.credits - generationCreditCost });
+      await updateDoc(userDocRef, { credits: increment(-generationCreditCost) });
       const values = form.getValues();
       const result = await generateCryptocurrencyDesign({ description: values.description, plan });
       setStep('result');
@@ -210,7 +210,7 @@ export default function CryptoBuilderPage() {
     } catch (error) {
        console.error(error);
        // Re-add credits if generation fails
-       await updateDoc(userDocRef, { credits: userData.credits });
+       await updateDoc(userDocRef, { credits: increment(generationCreditCost) });
       toast({
         title: 'Error Generating Design',
         description: 'There was a problem communicating with the AI. Please try again. Your credits have not been deducted.',

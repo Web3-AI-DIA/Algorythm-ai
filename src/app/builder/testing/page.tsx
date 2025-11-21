@@ -25,7 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Sparkles, Bot, CheckCircle, AlertTriangle, Lightbulb, CreditCard } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, increment } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -81,10 +81,10 @@ export default function SmartContractTestingPage() {
 
     try {
       if (hasFreeAudits) {
-        await updateDoc(userDocRef, { freeAudits: userData.freeAudits - 1 });
+        await updateDoc(userDocRef, { freeAudits: increment(-1) });
         toast({ title: 'Free audit used!', description: `You have ${userData.freeAudits - 1} free audits remaining.`});
       } else {
-        await updateDoc(userDocRef, { credits: userData.credits - creditCost });
+        await updateDoc(userDocRef, { credits: increment(-creditCost) });
         toast({ title: 'Credits Deducted', description: `${creditCost} credits have been deducted from your account.`});
       }
       
@@ -98,9 +98,14 @@ export default function SmartContractTestingPage() {
 
     } catch (error) {
       console.error(error);
+      if (hasFreeAudits) {
+        await updateDoc(userDocRef, { freeAudits: increment(1) });
+      } else {
+        await updateDoc(userDocRef, { credits: increment(creditCost) });
+      }
       toast({
         title: 'Analysis Failed',
-        description: 'There was an error analyzing your contract. Please try again.',
+        description: 'There was an error analyzing your contract. Please try again. Your credits were not deducted.',
         variant: 'destructive',
       });
       setStep('initial');

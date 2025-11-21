@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, increment } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { LoginForm } from '@/components/auth/login-form';
 import { SignupForm } from '@/components/auth/signup-form';
@@ -219,13 +219,13 @@ export default function DappBuilderPage() {
     setResult(null);
 
     try {
-      await updateDoc(userDocRef, { credits: userData.credits - planCreditCost });
+      await updateDoc(userDocRef, { credits: increment(-planCreditCost) });
       const generatedPlan = await generateDAppPlan({ prompt });
       setPlan(generatedPlan);
       toast({ title: 'Plan Generated!', description: `${planCreditCost} credits have been deducted.` });
     } catch (error) {
       console.error(error);
-      await updateDoc(userDocRef, { credits: userData.credits });
+      await updateDoc(userDocRef, { credits: increment(planCreditCost) });
       toast({
         title: 'Error Generating Plan',
         description: 'There was an error communicating with the AI. Please try again. Your credits have not been deducted.',
@@ -284,7 +284,7 @@ export default function DappBuilderPage() {
 
     setStep('generating');
     try {
-      await updateDoc(userDocRef, { credits: userData.credits - generationCreditCost });
+      await updateDoc(userDocRef, { credits: increment(-generationCreditCost) });
       const genResult = await generateDApp({ prompt, plan });
       setResult(genResult);
       setStep('result');
@@ -292,7 +292,7 @@ export default function DappBuilderPage() {
       toast({ title: 'dApp Generated!', description: `${generationCreditCost} credit has been deducted.` });
     } catch (error) {
       console.error(error);
-      await updateDoc(userDocRef, { credits: userData.credits });
+      await updateDoc(userDocRef, { credits: increment(generationCreditCost) });
       toast({
         title: 'Error Generating dApp',
         description: 'There was a problem communicating with the AI. Please check your connection and try again. Your credits were not deducted.',

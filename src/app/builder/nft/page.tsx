@@ -34,7 +34,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useUser, useFirestore, useStorage, useDoc, useMemoFirebase, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, doc, updateDoc, query, where, increment } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { LoginForm } from '@/components/auth/login-form';
@@ -143,31 +143,39 @@ export default function NftBuilderPage() {
 
   const numberOfNfts = form.watch('numberOfNfts');
   
-  const creditCost = useMemo(() => {
+  const planCreditCost = 3;
+  const generationCreditCost = useMemo(() => {
       if (numberOfNfts <= 0) return 0;
-      if (numberOfNfts === 1) return 5;
-      return 5 + (numberOfNfts - 1);
+      return 1 + (numberOfNfts - 1);
   }, [numberOfNfts]);
 
 
   async function onGeneratePlan(values: z.infer<typeof formSchema>) {
-    if (user && userData && userData.credits < creditCost) {
+    if (!user || !userData || !userDocRef) {
+        toast({ title: "Please Log In", description: "You need to be logged in to generate a plan.", variant: "destructive" });
+        setAuthModal('login');
+        return;
+    }
+    if (userData.credits < planCreditCost) {
       toast({
         title: 'Insufficient Credits',
-        description: `You need ${creditCost} credits for this collection, but you only have ${userData.credits}.`,
+        description: `You need ${planCreditCost} credits to generate a plan, but you only have ${userData.credits}.`,
         variant: 'destructive',
       });
       return;
     }
     setStep('plan');
     try {
+      await updateDoc(userDocRef, { credits: increment(-planCreditCost) });
       const generatedPlan = await generateNftPlan(values);
       setPlan(generatedPlan);
+      toast({ title: 'Plan Generated!', description: `${planCreditCost} credits have been deducted.` });
     } catch (error) {
       console.error(error);
+      await updateDoc(userDocRef, { credits: increment(planCreditCost) });
       toast({
         title: 'Error',
-        description: 'Failed to generate a plan. Please try again.',
+        description: 'Failed to generate a plan. Please try again. Your credits have not been deducted.',
         variant: 'destructive',
       });
       setStep('initial');
@@ -212,10 +220,10 @@ export default function NftBuilderPage() {
         return;
     }
 
-    if (userData.credits < creditCost) {
+    if (userData.credits < generationCreditCost) {
       toast({
         title: 'Insufficient Credits',
-        description: `You need ${creditCost} credits for this collection, but you only have ${userData.credits}.`,
+        description: `You need ${generationCreditCost} credits for this collection, but you only have ${userData.credits}.`,
         variant: 'destructive',
       });
       return;
@@ -224,14 +232,14 @@ export default function NftBuilderPage() {
     setStep('generating');
     setResult(null);
     try {
-      await updateDoc(userDocRef, { credits: userData.credits - creditCost });
+      await updateDoc(userDocRef, { credits: increment(-generationCreditCost) });
 
       const values = form.getValues();
       const response = await createNftCollection({...values, plan });
       setResult(response);
       setStep('result');
       
-      toast({ title: 'Collection Generated!', description: `${creditCost} credits were deducted.` });
+      toast({ title: 'Collection Generated!', description: `${generationCreditCost} credits were deducted. Uploading images...` });
 
 
       if (user && storage) {
@@ -252,9 +260,8 @@ export default function NftBuilderPage() {
         setResult({ nfts: nftsWithUrls }); // Update the result state with final URLs
 
       } else {
-         // This case is less likely now due to the initial user check.
         toast({
-          title: 'Collection Generated!',
+          title: 'Collection Generated! Sign up to save.',
           description: 'Sign up to save your project and store your images.',
           action: <Button onClick={() => setAuthModal('signup')}>Sign Up</Button>
         });
@@ -262,7 +269,7 @@ export default function NftBuilderPage() {
     } catch (error) {
       console.error(error);
       // Refund credits on failure
-      await updateDoc(userDocRef, { credits: userData.credits });
+      await updateDoc(userDocRef, { credits: increment(generationCreditCost) });
       toast({
         title: 'Error',
         description: 'Failed to generate NFT collection. Your credits were not deducted.',
@@ -294,14 +301,14 @@ export default function NftBuilderPage() {
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <CreditCard />
-                          <span>Total Cost</span>
+                          <span>Generation Cost</span>
                         </div>
-                        <span className="font-semibold text-foreground">{creditCost} Credits</span>
+                        <span className="font-semibold text-foreground">{generationCreditCost} Credits</span>
                       </div>
                       <p className="text-xs text-muted-foreground">To generate the full collection.</p>
                     </div>
                     <Button variant="outline" onClick={handleEdit}>Edit</Button>
-                    <Button onClick={onApprovePlan}>Approve & Generate</Button>
+                    <Button onClick={onApprovePlan}><Sparkles className="mr-2 h-4 w-4"/>Approve & Generate</Button>
                 </CardFooter>
             </Card>
         );
@@ -474,12 +481,12 @@ export default function NftBuilderPage() {
                           <div className="flex items-center justify-between text-sm">
                               <div className="flex items-center gap-2 text-muted-foreground">
                                   <CreditCard />
-                                  <span>Estimated Cost</span>
+                                  <span>Plan Cost</span>
                               </div>
-                              <span className="font-semibold text-foreground">{creditCost} Credits</span>
+                              <span className="font-semibold text-foreground">{planCreditCost} Credits</span>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                              1st NFT: 5 credits. Each additional: 1 credit.
+                              To generate the collection plan and attributes.
                           </p>
                       </div>
                     <Button type="submit" disabled={step !== 'initial'} className="w-full">
