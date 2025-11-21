@@ -41,13 +41,13 @@ const creditPacks = [
     nowPaymentsLink: process.env.NOWPAYMENTS_SCALE_PACK_LINK,
   },
   {
-    title: 'Unlimited',
-    price: '$500',
+    title: 'Enterprise',
+    price: '$350',
     description: 'For power users and enterprise teams.',
     features: ["✓ Unlimited Credits", "✓ Dedicated Support", "✓ Custom Integrations"],
     credits: -1, // Using -1 to represent unlimited
-    priceId: process.env.STRIPE_UNLIMITED_PACK_PRICE_ID,
-    nowPaymentsLink: process.env.NOWPAYMENTS_UNLIMITED_PACK_LINK,
+    priceId: process.env.STRIPE_ENTERPRISE_PACK_PRICE_ID,
+    nowPaymentsLink: process.env.NOWPAYMENTS_ENTERPRISE_PACK_LINK,
   },
 ];
 
