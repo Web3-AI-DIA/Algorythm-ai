@@ -30,11 +30,12 @@ import {
   GithubAuthProvider,
   signInWithPopup,
   UserCredential,
+  signInWithCustomToken,
 } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import { initiateEmailSignUp } from '@/firebase';
 import { ethers } from 'ethers';
-
+import { SiweMessage } from 'siwe';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -70,14 +71,9 @@ const createUserDocument = async (userCred: UserCredential) => {
     await setDoc(userRef, userData, { merge: true });
 };
 
-const getSiweMessage = (address: string, chainId: number, nonce: string) => {
-    return `${window.location.host} wants you to sign in with your Ethereum account:\n${address}\n\nI accept the Algorythm AI Terms of Service: https://${window.location.host}/terms\n\nURI: https://${window.location.host}\nVersion: 1\nChain ID: ${chainId}\nNonce: ${nonce}\nIssued At: ${new Date().toISOString()}`;
-}
-
 export function SignupForm({ onLoginClick }: SignupFormProps) {
   const { toast } = useToast();
   const auth = getAuth();
-  const firestore = getFirestore();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -113,7 +109,7 @@ export function SignupForm({ onLoginClick }: SignupFormProps) {
       const userCredential = await signInWithPopup(auth, provider);
       await createUserDocument(userCredential);
       toast({ title: 'Success', description: 'Signed up with GitHub.' });
-    } catch (error: any) {
+    } catch (error: any) => {
       toast({
         title: 'Error',
         description: error.message,
@@ -134,29 +130,42 @@ export function SignupForm({ onLoginClick }: SignupFormProps) {
         const address = await signer.getAddress();
         const { chainId } = await provider.getNetwork();
 
-        const userDocRef = doc(firestore, 'users', address);
-        const userDoc = await getDoc(userDocRef);
+        // 1. Get nonce from our API
+        const nonceRes = await fetch('/api/siwe?action=nonce', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address }),
+        });
+        if (!nonceRes.ok) throw new Error('Failed to get nonce.');
+        const { nonce } = await nonceRes.json();
 
-        let nonce = userDoc.exists() ? userDoc.data().nonce : Math.random().toString(36).substring(2);
+        // 2. Create SIWE message
+        const message = new SiweMessage({
+            domain: window.location.host,
+            address,
+            statement: `Sign in to Algorythm AI`,
+            uri: window.location.origin,
+            version: '1',
+            chainId: Number(chainId),
+            nonce,
+        });
 
-        if (!userDoc.exists()) {
-            await setDoc(userDocRef, { 
-                id: address,
-                nonce,
-                credits: 5,
-                freeAudits: 5,
-                isAdmin: false,
-            }, { merge: true });
-        }
+        // 3. Sign message
+        const signature = await signer.signMessage(message.prepareMessage());
 
-        const message = getSiweMessage(address, Number(chainId), nonce);
-        const signature = await signer.signMessage(message);
+        // 4. Verify signature and get custom token from our API
+        const verifyRes = await fetch('/api/siwe?action=verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message, signature }),
+        });
+        if (!verifyRes.ok) throw new Error('Failed to verify signature.');
+        const { token } = await verifyRes.json();
         
-        // This is a placeholder for a real server-side verification
-        console.log("Wallet address:", address);
-        console.log("Signature:", signature);
-        
-        toast({ title: 'Wallet Connected!', description: 'In a real app, this would sign you up. For now, this demonstrates the wallet signing flow.'});
+        // 5. Sign in with custom token
+        await signInWithCustomToken(auth, token);
+
+        toast({ title: 'Wallet Sign-Up Successful!', description: 'You are now logged in.'});
 
     } catch (error: any) {
         console.error("Web3 sign-in error:", error);

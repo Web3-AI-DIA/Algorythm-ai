@@ -33,8 +33,8 @@ import {
   signInWithCustomToken,
 } from 'firebase/auth';
 import { initiateEmailSignIn } from '@/firebase';
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import { ethers } from 'ethers';
+import { SiweMessage } from 'siwe';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -45,14 +45,9 @@ interface LoginFormProps {
     onSignupClick?: () => void;
 }
 
-const getSiweMessage = (address: string, chainId: number, nonce: string) => {
-    return `${window.location.host} wants you to sign in with your Ethereum account:\n${address}\n\nI accept the Algorythm AI Terms of Service: https://${window.location.host}/terms\n\nURI: https://${window.location.host}\nVersion: 1\nChain ID: ${chainId}\nNonce: ${nonce}\nIssued At: ${new Date().toISOString()}`;
-}
-
 export function LoginForm({ onSignupClick }: LoginFormProps) {
   const { toast } = useToast();
   const auth = getAuth();
-  const firestore = getFirestore();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -132,33 +127,42 @@ export function LoginForm({ onSignupClick }: LoginFormProps) {
         const address = await signer.getAddress();
         const { chainId } = await provider.getNetwork();
 
-        const userDocRef = doc(firestore, 'users', address);
-        const userDoc = await getDoc(userDocRef);
+        // 1. Get nonce from our API
+        const nonceRes = await fetch('/api/siwe?action=nonce', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address }),
+        });
+        if (!nonceRes.ok) throw new Error('Failed to get nonce.');
+        const { nonce } = await nonceRes.json();
 
-        let nonce = userDoc.exists() ? userDoc.data().nonce : Math.random().toString(36).substring(2);
+        // 2. Create SIWE message
+        const message = new SiweMessage({
+            domain: window.location.host,
+            address,
+            statement: `Sign in to Algorythm AI`,
+            uri: window.location.origin,
+            version: '1',
+            chainId: Number(chainId),
+            nonce,
+        });
 
-        if (!userDoc.exists()) {
-            await setDoc(userDocRef, { 
-                id: address,
-                nonce,
-                credits: 5,
-                freeAudits: 5,
-                isAdmin: false,
-            }, { merge: true });
-        }
+        // 3. Sign message
+        const signature = await signer.signMessage(message.prepareMessage());
 
-        const message = getSiweMessage(address, Number(chainId), nonce);
-        const signature = await signer.signMessage(message);
-
-        // This is a placeholder for a real server-side verification
-        // In a real app, you would send the message and signature to a backend function
-        // that verifies the signature and returns a custom Firebase token.
-        // For this demo, we'll simulate a successful login.
-        // NOTE: This is NOT secure and is for demonstration purposes only.
-        console.log("Wallet address:", address);
-        console.log("Signature:", signature);
+        // 4. Verify signature and get custom token from our API
+        const verifyRes = await fetch('/api/siwe?action=verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message, signature }),
+        });
+        if (!verifyRes.ok) throw new Error('Failed to verify signature.');
+        const { token } = await verifyRes.json();
         
-        toast({ title: 'Wallet Connected!', description: 'In a real app, this would log you in. For now, this demonstrates the wallet signing flow.'});
+        // 5. Sign in with custom token
+        await signInWithCustomToken(auth, token);
+
+        toast({ title: 'Wallet Sign-In Successful!', description: 'You are now logged in.'});
 
     } catch (error: any) {
         console.error("Web3 sign-in error:", error);

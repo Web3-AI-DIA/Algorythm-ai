@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { generateDAppPlan, generateDApp, GenerateDAppOutput } from '@/ai/flows/ai-driven-dapp-generation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -34,63 +34,97 @@ const deploymentChecklist = [
 function LivePreview({ code }: { code: string }) {
   const [Component, setComponent] = useState<React.FC | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Check if scripts are loaded
-    if ((window as any).Babel && (window as any).ethers) {
-      setIsReady(true);
+    if (!code) return;
+    
+    // Ensure Babel and ethers are available on the window object
+    if (typeof (window as any).Babel === 'undefined' || typeof (window as any).ethers === 'undefined') {
+      console.error("Babel or ethers.js not loaded");
+      setError("Preview environment is not ready. Please refresh.");
+      return;
     }
-  }, []);
 
-  useEffect(() => {
-    if (isReady && code) {
-      try {
-        const fullCode = `
-          const { useState, useEffect, useCallback } = React;
-          const { ethers } = window.ethers;
-          
-          function App() {
-            ${code.replace(/export default function Component\(\)/, '')}
-            return Component();
-          }
-          
-          return React.createElement(App);
-        `;
-        const transformedCode = (window as any).Babel.transform(fullCode, { presets: ['react'] }).code;
-        const DynamicComponent = new Function('React', 'ethers', transformedCode);
-        
-        setComponent(() => DynamicComponent(React, (window as any).ethers));
-        setError(null);
-      } catch (e: any) {
-        console.error("Error rendering live preview:", e);
-        setError("Failed to render preview. The generated code might have an error.");
-        setComponent(null);
+    try {
+      // The AI generates a component named 'Component'. We need to extract its body.
+      const componentBodyMatch = code.match(/function Component\(\)\s*\{([\s\S]*)\}/);
+      if (!componentBodyMatch) {
+        throw new Error("Could not find a valid React component structure in the generated code.");
       }
+      
+      const componentBody = componentBodyMatch[1];
+      
+      // We dynamically create a new function that includes React hooks and ethers.js from the window scope.
+      const fullCode = `
+        const { useState, useEffect, useCallback } = React;
+        const { ethers } = window.ethers;
+        
+        // This is the body of the generated component
+        ${componentBody}
+      `;
+      
+      // Transform JSX to JS using Babel
+      const transformedCode = (window as any).Babel.transform(fullCode, { presets: ['react'] }).code;
+      
+      // Create a new function that returns the component's output
+      const DynamicComponent = new Function('React', 'ethers', transformedCode);
+
+      // Set the component to be rendered
+      setComponent(() => DynamicComponent(React, (window as any).ethers));
+      setError(null);
+    } catch (e: any) {
+      console.error("Error rendering live preview:", e);
+      setError(`Failed to render preview. The generated code might have an error: ${e.message}`);
+      setComponent(null);
     }
-  }, [code, isReady]);
+  }, [code]);
 
   if (error) {
     return <div className="text-destructive-foreground p-4 bg-destructive rounded-md">{error}</div>;
   }
   
-  if (!isReady || !Component) {
+  if (!Component) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
         <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
-        Loading Preview...
+        Rendering Preview...
       </div>
     );
   }
 
   return (
      <div className="w-full h-full p-4 bg-white rounded-md text-black">
-        <React.Suspense fallback={<div>Loading Preview...</div>}>
+        <Suspense fallback={<div>Loading Preview...</div>}>
             {Component}
-        </React.Suspense>
+        </Suspense>
     </div>
   )
 }
+
+function LivePreviewWrapper({ code }: { code: string }) {
+    const [isClient, setIsClient] = useState(false);
+    const [isReady, setIsReady] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+        // Check if scripts are loaded
+        if ((window as any).Babel && (window as any).ethers) {
+            setIsReady(true);
+        }
+    }, []);
+
+    if (!isClient || !isReady) {
+        return (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
+                Loading Preview Environment...
+            </div>
+        );
+    }
+
+    return <LivePreview code={code} />;
+}
+
 
 function ChecklistDialog() {
     const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
@@ -428,7 +462,7 @@ export default function DappBuilderPage() {
                 </TabsList>
                 
                 <TabsContent value="preview" className="flex-1 flex items-center justify-center text-muted-foreground p-4 bg-secondary/20 m-4 mt-0 rounded-lg">
-                  {step === 'generating' ? <Loader2 className="h-8 w-8 animate-spin"/> : result?.livePreview ? <LivePreview code={result.livePreview} /> : 'Live preview will appear here...'}
+                  {step === 'generating' ? <Loader2 className="h-8 w-8 animate-spin"/> : result?.livePreview ? <LivePreviewWrapper code={result.livePreview} /> : 'Live preview will appear here...'}
                 </TabsContent>
 
                 <TabsContent value="code" className="flex-1 relative overflow-hidden">
