@@ -22,8 +22,8 @@
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
 
-    --accent: 75 100% 50%; /* Neon Green */
-    --accent-foreground: 75 100% 10%;
+    --accent: 75 95% 45%; /* Darker Neon Green */
+    --accent-foreground: 75 95% 5%;
     
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
@@ -36,7 +36,7 @@
 
     /* Custom Colors */
     --electric-blue: 217 91% 60%;
-    --neon-green: 75 100% 50%;
+    --neon-green: 75 95% 45%; /* Darker Neon Green */
     --neon-yellow: 54 96% 50%;
   }
 
@@ -59,8 +59,8 @@
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
 
-    --accent: 75 100% 50%; /* Neon Green */
-    --accent-foreground: 75 100% 10%;
+    --accent: 75 95% 45%; /* Darker Neon Green */
+    --accent-foreground: 75 95% 5%;
     
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
@@ -71,7 +71,7 @@
 
     /* Custom Colors */
     --electric-blue: 217 91% 60%;
-    --neon-green: 75 100% 50%;
+    --neon-green: 75 95% 45%; /* Darker Neon Green */
     --neon-yellow: 54 96% 50%;
   }
 }
