@@ -26,7 +26,7 @@ export function HamburgerIcon(props: SVGProps<SVGSVGElement>) {
       />
       <path
         d="M3 18L21 18"
-        stroke="hsl(var(--primary))"
+        stroke="hsl(var(--neon-yellow))"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
