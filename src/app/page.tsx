@@ -81,21 +81,24 @@ export default function Home() {
           </div>
         )}
         <div className="container px-4 md:px-6 relative z-10">
-          <div className="flex flex-col justify-center space-y-6 text-center items-center">
+          <div className="flex flex-col justify-center space-y-8 text-center items-center">
             <div className="space-y-4 max-w-4xl">
-               <h1 className="text-4xl font-bold tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl font-headline bg-clip-text text-transparent bg-gradient-to-br from-neon-yellow via-neon-green to-electric-blue">
+               <h1 className="text-4xl font-bold tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl font-headline bg-clip-text text-transparent bg-gradient-to-br from-neon-green via-electric-blue to-neon-yellow">
                  Conversational Creation for the Decentralized Future
                </h1>
               <p className="mx-auto max-w-[700px] text-muted-foreground text-lg md:text-xl">
-                Simply describe your vision. Our AI-powered builders will generate the code, contracts, and collections for your next big idea on the blockchain.
+                How are you trying to enhance Web3?
               </p>
             </div>
-             <div className="flex flex-col sm:flex-row w-full max-w-sm items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4 mx-auto">
-              <Button asChild size="lg" className="w-full sm:w-auto">
-                <Link href="/dashboard">Get Started <ArrowRight className="ml-2 h-5 w-5"/></Link>
+             <div className="flex flex-col sm:flex-row w-full max-w-md items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mx-auto">
+              <Button asChild size="lg" className="w-full sm:w-auto bg-neon-green text-black hover:bg-neon-green/90">
+                <Link href="/builder/dapp">dApp</Link>
               </Button>
-               <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">
-                  <Link href="#pricing">View Pricing</Link>
+               <Button asChild size="lg" className="w-full sm:w-auto bg-electric-blue text-primary-foreground hover:bg-electric-blue/90">
+                  <Link href="/builder/nft">NFT</Link>
+                </Button>
+                 <Button asChild size="lg" className="w-full sm:w-auto bg-neon-yellow text-black hover:bg-neon-yellow/90">
+                  <Link href="/builder/crypto">Crypto</Link>
                 </Button>
             </div>
           </div>
