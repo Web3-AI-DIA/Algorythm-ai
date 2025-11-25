@@ -15,8 +15,9 @@ const creditPacks = [
   {
     title: 'Starter Pack',
     price: '$25',
+    pricePeriod: '/ month',
     description: 'Perfect for a few small projects.',
-    features: ['✓ 40 Credits', '✓ One-time purchase', '✓ Standard Support'],
+    features: ['✓ 40 Credits', '✓ Monthly subscription', '✓ Standard Support'],
     credits: 40,
     priceId: process.env.STRIPE_STARTER_PACK_PRICE_ID,
     nowPaymentsLink: process.env.NOWPAYMENTS_STARTER_PACK_LINK,
@@ -24,8 +25,9 @@ const creditPacks = [
   {
     title: 'Pro Pack',
     price: '$50',
+    pricePeriod: '/ month',
     description: 'Ideal for serious hobbyists and frequent users.',
-    features: ['✓ 100 Credits', '✓ One-time purchase', '✓ Priority Support'],
+    features: ['✓ 100 Credits', '✓ Monthly subscription', '✓ Priority Support'],
     credits: 100,
     isFeatured: true,
     priceId: process.env.STRIPE_PRO_PACK_PRICE_ID,
@@ -34,8 +36,9 @@ const creditPacks = [
   {
     title: 'Scale Pack',
     price: '$100',
+    pricePeriod: '/ month',
     description: 'For professionals and teams building at scale.',
-    features: ["✓ 250 credits", '✓ One-time purchase', '✓ Priority Support'],
+    features: ["✓ 250 credits", '✓ Monthly subscription', '✓ Priority Support'],
     credits: 250,
     priceId: process.env.STRIPE_SCALE_PACK_PRICE_ID,
     nowPaymentsLink: process.env.NOWPAYMENTS_SCALE_PACK_LINK,
@@ -43,6 +46,7 @@ const creditPacks = [
   {
     title: 'Enterprise',
     price: '$350',
+    pricePeriod: '/ month',
     description: 'For power users and enterprise teams.',
     features: ["✓ Unlimited Credits", "✓ Dedicated Support", "✓ Custom Integrations"],
     credits: -1, // Using -1 to represent unlimited

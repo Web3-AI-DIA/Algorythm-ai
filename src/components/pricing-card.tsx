@@ -78,7 +78,7 @@ export function PricingCard({
       
       const { error } = await stripe.redirectToCheckout({
         lineItems: [{ price: priceId, quantity: 1 }],
-        mode: 'payment',
+        mode: 'subscription',
         successUrl: `${window.location.origin}/payment/success`,
         cancelUrl: `${window.location.origin}/payment/cancel`,
         clientReferenceId: user.uid,
