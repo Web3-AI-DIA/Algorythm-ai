@@ -110,7 +110,7 @@ export function PricingCard({
   const renderButton = () => {
     if (title === 'New User') {
         return (
-            <Button asChild className="w-full" variant="outline">
+            <Button asChild className="w-full bg-neon-yellow text-black hover:bg-neon-yellow/90">
                 <Link href="/signup">{buttonText}</Link>
             </Button>
         );
@@ -118,7 +118,7 @@ export function PricingCard({
     
     return (
       <div className="w-full space-y-2">
-        <Button onClick={handlePurchase} disabled={isLoading} className={cn('w-full', isFeatured && 'bg-neon-yellow hover:bg-neon-yellow/90 text-black')}>
+        <Button onClick={handlePurchase} disabled={isLoading} className={cn('w-full bg-neon-yellow hover:bg-neon-yellow/90 text-black')}>
             {isLoading ? <Loader2 className="animate-spin" /> : buttonText}
         </Button>
         {nowPaymentsLink && (
