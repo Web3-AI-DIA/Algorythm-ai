@@ -166,7 +166,7 @@ export default function Home() {
             </p>
           </div>
           <div className="mx-auto w-full max-w-sm space-x-4">
-            <Button asChild size="lg">
+            <Button asChild size="lg" className="bg-neon-yellow text-black hover:bg-neon-yellow/90">
               <Link href="/signup">Sign Up Now</Link>
             </Button>
             <Button asChild variant="secondary" size="lg">
