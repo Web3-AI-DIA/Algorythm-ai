@@ -109,7 +109,7 @@ export function SignupForm({ onLoginClick }: SignupFormProps) {
       const userCredential = await signInWithPopup(auth, provider);
       await createUserDocument(userCredential);
       toast({ title: 'Success', description: 'Signed up with GitHub.' });
-    } catch (error: any) => {
+    } catch (error: any) {
       toast({
         title: 'Error',
         description: error.message,
