@@ -197,6 +197,9 @@ export function Header() {
             <Button variant="ghost" asChild>
               <Link href="/pricing">Pricing</Link>
             </Button>
+            <Button variant="ghost" asChild>
+              <Link href="/docs">Docs</Link>
+            </Button>
           </nav>
         </div>
 
@@ -236,6 +239,12 @@ export function Header() {
                     </Link>
                   </Button>
                 ))}
+                <Button variant="ghost" asChild className="justify-start">
+                  <Link href="/docs">
+                    <HelpCircle className="h-4 w-4 mr-2" />
+                    Docs
+                  </Link>
+                </Button>
                 <DropdownMenuSeparator />
                 {mobileNavLinks.map((link) => (
                   <Button variant="ghost" asChild key={link.href} className="justify-start">
