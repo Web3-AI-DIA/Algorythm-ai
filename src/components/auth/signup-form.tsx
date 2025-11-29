@@ -62,8 +62,8 @@ const createUserDocument = async (userCred: UserCredential) => {
         email: user.email,
         displayName: user.displayName,
         photoURL: user.photoURL,
-        credits: 5, // Assign 5 free credits on creation
-        freeAudits: 5, // Assign 5 free audits on creation
+        credits: 8, // Assign 8 free credits on creation
+        freeAudits: 0,
         isAdmin: false,
     };
 
