@@ -18,6 +18,65 @@ const creditsPerPrice: { [key: string]: number } = {
   [process.env.STRIPE_SCALE_PACK_PRICE_ID!]: 250,
 };
 
+async function handleSubscriptionEvent(subscription: Stripe.Subscription, eventType: string) {
+    if (!adminDb) {
+        console.error('Firestore Admin SDK not initialized. Cannot process webhook.');
+        return NextResponse.json({ error: 'Firestore Admin is not configured.' }, { status: 500 });
+    }
+
+    const customerId = subscription.customer as string;
+    const userSnapshot = await adminDb.collection('users').where('stripeCustomerId', '==', customerId).get();
+
+    if (userSnapshot.empty) {
+        // If the user is not found by stripeCustomerId, it might be the first payment
+        // of a new subscription, so the stripeCustomerId is not stored yet.
+        // In this case, we can't handle the event, but we should not return an error.
+        console.warn(`🤷 No user found with Stripe customer ID: ${customerId}. This might be a new subscription.`);
+        return NextResponse.json({ received: true });
+    }
+    const userDoc = userSnapshot.docs[0];
+    const userId = userDoc.id;
+
+    const priceId = subscription.items.data[0].price.id;
+    const creditsToAdd = creditsPerPrice[priceId] || 0;
+
+    const subscriptionData = {
+        status: subscription.status,
+        planId: priceId,
+        current_period_end: new Date(subscription.current_period_end * 1000),
+    };
+
+    try {
+        switch (eventType) {
+            case 'customer.subscription.created':
+            case 'customer.subscription.updated':
+                await userDoc.ref.update({ subscription: subscriptionData });
+                console.log(`✅ Subscription ${eventType} for user ${userId}`);
+                break;
+            case 'customer.subscription.deleted':
+                await userDoc.ref.update({ subscription: { status: 'canceled' } });
+                console.log(`✅ Subscription canceled for user ${userId}`);
+                break;
+            case 'invoice.payment_succeeded':
+                if (creditsToAdd > 0) {
+                    await userDoc.ref.update({
+                        credits: FieldValue.increment(creditsToAdd),
+                        subscription: subscriptionData
+                    });
+                    console.log(`✅ Successfully added ${creditsToAdd} credits to user ${userId} for subscription renewal.`);
+                }
+                break;
+            default:
+                console.log(`🤷 Unhandled event type: ${eventType}`);
+        }
+    } catch (error: any) {
+        console.error(`🔥 Firestore error: ${error.message}`);
+        return NextResponse.json({ error: 'Internal server error while updating subscription.' }, { status: 500 });
+    }
+
+    return NextResponse.json({ received: true });
+}
+
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
     if (!adminDb) {
         console.error('Firestore Admin SDK not initialized. Cannot process webhook.');
@@ -30,48 +89,13 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
     }
 
-    try {
-        if (session.mode === 'subscription') {
-            const subscription = await stripe!.subscriptions.retrieve(session.subscription as string);
-            const priceId = subscription.items.data[0].price.id;
-            const creditsToAdd = creditsPerPrice[priceId] || 0;
-             if (creditsToAdd > 0) {
-                const userRef = adminDb.collection('users').doc(userId);
-                await userRef.update({
-                    credits: FieldValue.increment(creditsToAdd)
-                });
-                console.log(`✅ Successfully added ${creditsToAdd} credits to user ${userId} for new subscription.`);
-            }
-
-        } else if (session.mode === 'payment') {
-            const sessionWithLineItems = await stripe!.checkout.sessions.retrieve(
-                session.id,
-                { expand: ['line_items'] }
-            );
-
-            const lineItems = sessionWithLineItems.line_items;
-            if (!lineItems?.data.length) {
-                console.error('❌ No line items found in session');
-                return NextResponse.json({ error: 'No line items found' }, { status: 400 });
-            }
-            const priceId = lineItems.data[0].price?.id;
-            const creditsToAdd = priceId ? creditsPerPrice[priceId] : 0;
-
-            if (creditsToAdd > 0) {
-                const userRef = adminDb.collection('users').doc(userId);
-                await userRef.update({
-                    credits: FieldValue.increment(creditsToAdd)
-                });
-                console.log(`✅ Successfully added ${creditsToAdd} credits to user ${userId}`);
-            } else {
-                console.warn(`🤷 No credits configured for priceId: ${priceId}`);
-            }
-        }
-    } catch (error: any) {
-        console.error(`🔥 Firestore or Stripe API error: ${error.message}`);
-        return NextResponse.json({ error: 'Internal server error while updating user credits.' }, { status: 500 });
+    if (session.mode === 'subscription' && session.customer) {
+        const userRef = adminDb.collection('users').doc(userId);
+        await userRef.update({ stripeCustomerId: session.customer });
+        console.log(`✅ Associated Stripe customer ${session.customer} with user ${userId}`);
     }
 
+    // The initial credit allocation is handled by the 'invoice.payment_succeeded' event
     return NextResponse.json({ received: true });
 }
 
@@ -127,17 +151,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
   }
 
-  // Handle the checkout.session.completed event
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session;
-    return handleCheckoutSessionCompleted(session);
-  }
+  // Handle subscription events
+  switch (event.type) {
+    case 'checkout.session.completed':
+      const session = event.data.object as Stripe.Checkout.Session;
+      return handleCheckoutSessionCompleted(session);
 
-  // Handle subscription renewal
-  if (event.type === 'invoice.payment_succeeded' && (event.data.object as Stripe.Invoice).subscription) {
+    case 'customer.subscription.created':
+    case 'customer.subscription.updated':
+    case 'customer.subscription.deleted':
+      const subscription = event.data.object as Stripe.Subscription;
+      return handleSubscriptionEvent(subscription, event.type);
+
+    case 'invoice.payment_succeeded':
       const invoice = event.data.object as Stripe.Invoice;
-      const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
-      return handleSubscriptionUpdated(subscription);
+      if (invoice.subscription) {
+        const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+        return handleSubscriptionEvent(subscription, event.type);
+      }
+      break;
+
+    default:
+      console.log(`🤷 Unhandled event type: ${event.type}`);
   }
 
 

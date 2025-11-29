@@ -48,6 +48,8 @@ const GenerateDAppOutputSchema = z.object({
   dAppCode: z.string().describe('The generated code for the dApp, which should be a single file of React code for a component. It must include wallet connection logic.'),
   description: z.string().describe('A short description of the generated dApp and suggestions for next steps.'),
   livePreview: z.string().describe('The JSX component to be rendered as a live preview. This should be a self-contained component.'),
+  abi: z.string().describe('The ABI of the smart contract, in JSON format.'),
+  bytecode: z.string().describe('The bytecode of the smart contract.'),
 });
 export type GenerateDAppOutput = z.infer<typeof GenerateDAppOutputSchema>;
 
@@ -92,10 +94,12 @@ IMPORTANT: You must use the correct library based on the plan.
 - If the plan specifies a contract ABI, you MUST use that ABI with 'ethers.js' to create the contract instance and interact with it.
 - Otherwise, use 'ethers.js' (v6) for all blockchain interactions and to connect with EVM wallets like MetaMask.
 
-You must provide three things in your response:
+You must provide five things in your response:
 1.  'dAppCode': The full React component code for the dApp. It should be a single file and include all necessary imports.
 2.  'description': A brief summary of what the dApp does and a suggestion for the user's next step.
 3.  'livePreview': The same React component code to be rendered as a live preview. It must be a self-contained component that can be rendered directly.
+4.  'abi': The ABI of the smart contract, in JSON format.
+5.  'bytecode': The bytecode of the smart contract.
   
 Initial Prompt: {{{prompt}}}
 
