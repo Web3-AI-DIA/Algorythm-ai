@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Send, Sparkles, Clipboard, Check, FileCode, Eye, ListChecks, Bot, CreditCard, Github } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, doc, updateDoc, increment } from 'firebase/firestore';
@@ -19,6 +20,9 @@ import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import Script from 'next/script';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import Editor from '@monaco-editor/react';
+import { ChatInterface } from '@/components/builder/chat-interface';
+import { DeployDialog } from '@/components/builder/deploy-dialog';
 
 type Step = 'initial' | 'plan' | 'generating' | 'result';
 type AuthModal = 'login' | 'signup' | null;
@@ -32,112 +36,6 @@ const deploymentChecklist = [
     { id: '6', 'label': 'Deploy front-end (e.g., Vercel, Firebase Hosting)' },
     { id: '7', label: 'Deploy smart contract to mainnet (Est. Cost: 1 credit per blockchain + gas fees)' },
 ];
-
-function GithubSyncDialog({ code }: { code: string }) {
-    const [isOpen, setIsOpen] = useState(false);
-    const [repoName, setRepoName] = useState('');
-    const [githubToken, setGithubToken] = useState('');
-    const [isSyncing, setIsSyncing] = useState(false);
-    const { toast } = useToast();
-
-    const handleSync = async () => {
-        if (!repoName || !githubToken) {
-            toast({
-                title: 'Missing Information',
-                description: 'Please provide a repository name and a GitHub token.',
-                variant: 'destructive',
-            });
-            return;
-        }
-
-        setIsSyncing(true);
-        try {
-            const response = await fetch('/api/github', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    repoName,
-                    githubToken,
-                    code,
-                }),
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.error || 'Failed to sync with GitHub.');
-            }
-
-            toast({
-                title: 'Sync Successful!',
-                description: (
-                    <p>
-                        Repository created: <a href={result.repoUrl} target="_blank" rel="noopener noreferrer" className="underline">{result.repoUrl}</a>
-                    </p>
-                )
-            });
-            setIsOpen(false);
-        } catch (error: any) {
-            toast({
-                title: 'Sync Failed',
-                description: error.message,
-                variant: 'destructive',
-            });
-        } finally {
-            setIsSyncing(false);
-        }
-    };
-
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-                <Button variant="outline">
-                    <Github className="mr-2 h-4 w-4" /> Sync to GitHub
-                </Button>
-            </DialogTrigger>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Sync to GitHub</DialogTitle>
-                    <DialogDescription>
-                        Create a new GitHub repository with your generated dApp code.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="repo-name">New Repository Name</Label>
-                        <Input
-                            id="repo-name"
-                            placeholder="my-awesome-dapp"
-                            value={repoName}
-                            onChange={(e) => setRepoName(e.target.value)}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="github-token">GitHub Personal Access Token</Label>
-                        <Input
-                            id="github-token"
-                            type="password"
-                            placeholder="ghp_..."
-                            value={githubToken}
-                            onChange={(e) => setGithubToken(e.target.value)}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            Create a <a href="https://github.com/settings/tokens/new?scopes=repo" target="_blank" rel="noopener noreferrer" className="underline">new token</a> with `repo` permissions. This token is not stored.
-                        </p>
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSync} disabled={isSyncing}>
-                        {isSyncing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Create Repository
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
 
 function LivePreview({ code }: { code: string }) {
   const [Component, setComponent] = useState<React.FC | null>(null);
@@ -286,6 +184,8 @@ export default function DappBuilderPage() {
   const [step, setStep] = useState<Step>('initial');
   const [plan, setPlan] = useState('');
   const [result, setResult] = useState<GenerateDAppOutput | null>(null);
+  const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
+  const [messages, setMessages] = useState<{ sender: 'user' | 'ai'; text: string }[]>([]);
   const { toast } = useToast();
   const [hasCopied, setHasCopied] = useState(false);
   const { user } = useUser();
@@ -294,6 +194,12 @@ export default function DappBuilderPage() {
 
   const userDocRef = useMemoFirebase(() => (user && firestore ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
   const { data: userData } = useDoc(userDocRef);
+
+  const handleSendMessage = (message: string) => {
+    setMessages((prevMessages) => [...prevMessages, { sender: 'user', text: message }]);
+    setPrompt(message);
+    handleGeneratePlan(message);
+  };
 
   const handleCopy = () => {
     if (result?.dAppCode) {
@@ -304,14 +210,13 @@ export default function DappBuilderPage() {
     }
   };
 
-  const handleGeneratePlan = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!prompt.trim() || step !== 'initial') return;
+  const handleGeneratePlan = async (currentPrompt: string) => {
+    if (!currentPrompt.trim() || step !== 'initial') return;
 
     if (!user || !userData || !userDocRef) {
-        toast({ title: "Please Log In", description: "You need to be logged in to generate a plan.", variant: "destructive" });
-        setAuthModal('login');
-        return;
+      setMessages((prev) => [...prev, { sender: 'ai', text: 'Please log in to generate a plan.' }]);
+      setAuthModal('login');
+      return;
     }
 
     if (userData.credits < planCreditCost) {
@@ -328,12 +233,14 @@ export default function DappBuilderPage() {
 
     try {
       await updateDoc(userDocRef, { credits: increment(-planCreditCost) });
-      const generatedPlan = await generateDAppPlan({ prompt });
+      const generatedPlan = await generateDAppPlan({ prompt: currentPrompt });
       setPlan(generatedPlan);
+      setMessages((prev) => [...prev, { sender: 'ai', text: `**AI Generated Plan:**\n\n${generatedPlan}` }]);
       toast({ title: 'Plan Generated!', description: `${planCreditCost} credits have been deducted.` });
     } catch (error) {
       console.error(error);
       await updateDoc(userDocRef, { credits: increment(planCreditCost) });
+      setMessages((prev) => [...prev, { sender: 'ai', text: 'Sorry, I had trouble generating a plan. Please try again.' }]);
       toast({
         title: 'Error Generating Plan',
         description: 'There was an error communicating with the AI. Please try again. Your credits have not been deducted.',
@@ -376,12 +283,13 @@ export default function DappBuilderPage() {
 
   const handleApprovePlan = async () => {
     if (!user || !userData || !userDocRef) {
-        toast({ title: "Please Log In", description: "You need to be logged in to generate a dApp.", variant: "destructive" });
-        setAuthModal('login');
-        return;
+      setMessages((prev) => [...prev, { sender: 'ai', text: 'Please log in to generate a dApp.' }]);
+      setAuthModal('login');
+      return;
     }
 
     if (userData.credits < generationCreditCost) {
+      setMessages((prev) => [...prev, { sender: 'ai', text: `You need ${generationCreditCost} credit to generate the dApp, but you only have ${userData.credits}.` }]);
       toast({
         title: 'Insufficient Credits',
         description: `You need ${generationCreditCost} credit to generate the dApp, but you only have ${userData.credits}.`,
@@ -396,11 +304,13 @@ export default function DappBuilderPage() {
       const genResult = await generateDApp({ prompt, plan });
       setResult(genResult);
       setStep('result');
+      setMessages((prev) => [...prev, { sender: 'ai', text: genResult.description }]);
       await saveProject(genResult);
       toast({ title: 'dApp Generated!', description: `${generationCreditCost} credit has been deducted.` });
     } catch (error) {
       console.error(error);
       await updateDoc(userDocRef, { credits: increment(generationCreditCost) });
+      setMessages((prev) => [...prev, { sender: 'ai', text: 'Sorry, I had trouble generating the dApp. Please try again.' }]);
       toast({
         title: 'Error Generating dApp',
         description: 'There was a problem communicating with the AI. Please check your connection and try again. Your credits were not deducted.',
@@ -476,63 +386,11 @@ export default function DappBuilderPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
-                <ScrollArea className="flex-1 pr-4">
-                  <div className="space-y-4">
-                      {step === 'initial' && <div className="text-muted-foreground">Describe your dApp to get started. The AI will generate a plan for your approval.</div>}
-                      {step === 'plan' && !plan && (
-                          <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold">A</div>
-                            <div className="rounded-lg p-3 bg-secondary flex items-center"><Loader2 className="h-5 w-5 animate-spin" /></div>
-                          </div>
-                      )}
-                      {step === 'plan' && plan && (
-                          <Card>
-                              <CardHeader>
-                                  <CardTitle className="flex items-center gap-2">AI Generated Plan</CardTitle>
-                                  <CardDescription>Review the plan below. You can approve it to generate the dApp, or go back to edit your description.</CardDescription>
-                              </CardHeader>
-                              <CardContent>
-                                  <p className="p-4 bg-secondary rounded-md whitespace-pre-wrap">{plan}</p>
-                              </CardContent>
-                          </Card>
-                      )}
-                      {step === 'result' && result?.description && (
-                          <div className="rounded-lg p-3 bg-secondary">{result.description}</div>
-                      )}
-                    {(step === 'generating') && (
-                      <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold">A</div>
-                          <div className="rounded-lg p-3 bg-secondary flex items-center"><Loader2 className="h-5 w-5 animate-spin" /></div>
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-                {step === 'initial' && (
-                  <form onSubmit={handleGeneratePlan} className="flex flex-col gap-4 border-t pt-4">
-                    <Textarea
-                      placeholder="Describe the dApp you want to build..."
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      rows={2}
-                      className="flex-1"
-                      disabled={isLoading}
-                    />
-                    <div className="space-y-2 rounded-lg border bg-secondary/50 p-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <CreditCard />
-                          <span>Cost</span>
-                        </div>
-                        <span className="font-semibold text-foreground">{planCreditCost} Credits</span>
-                      </div>
-                       <p className="text-xs text-muted-foreground">To generate a high-level plan for your dApp.</p>
-                    </div>
-                    <Button type="submit" size="lg" disabled={!prompt.trim() || isLoading}>
-                      {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4" />}
-                      Generate Plan
-                    </Button>
-                  </form>
-                )}
+                <ChatInterface
+                  messages={messages}
+                  onSendMessage={handleSendMessage}
+                  isLoading={isLoading}
+                />
                 {step === 'plan' && plan && (
                   <CardFooter className="flex-col sm:flex-row justify-end gap-2 border-t pt-4">
                       <div className="w-full sm:w-auto space-y-2 rounded-lg border bg-secondary/50 p-4 mb-4 sm:mb-0 sm:mr-auto">
@@ -554,7 +412,13 @@ export default function DappBuilderPage() {
                 )}
                 {step === 'result' && (
                     <div className="flex justify-end gap-2 border-t pt-4">
-                        {result?.dAppCode && <GithubSyncDialog code={result.dAppCode} />}
+                        {result?.dAppCode && (
+                            <DeployDialog
+                                contractCode={result.dAppCode}
+                                abi={result.abi}
+                                bytecode={result.bytecode}
+                            />
+                        )}
                         <Button variant="outline" onClick={handleEdit}>Start Over</Button>
                     </div>
                 )}
@@ -564,28 +428,41 @@ export default function DappBuilderPage() {
 
           {/* Right Column: Preview, Code */}
           <Card className="flex flex-col">
-              <Tabs defaultValue="preview" className="h-full flex flex-col">
-                <TabsList className="m-4">
-                  <TabsTrigger value="preview"><Eye className="mr-2 h-4 w-4"/>Live Preview</TabsTrigger>
-                  <TabsTrigger value="code"><FileCode className="mr-2 h-4 w-4"/>Code</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="preview" className="flex-1 flex items-center justify-center text-muted-foreground p-4 bg-secondary/20 m-4 mt-0 rounded-lg">
-                  {step === 'generating' ? <Loader2 className="h-8 w-8 animate-spin"/> : result?.livePreview ? <LivePreviewWrapper code={result.livePreview} /> : 'Live preview will appear here...'}
-                </TabsContent>
+            <div className="flex items-center justify-between p-4 border-b">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={viewMode === 'preview'}
+                  onCheckedChange={(checked) => setViewMode(checked ? 'preview' : 'code')}
+                  id="view-mode-switch"
+                />
+                <Label htmlFor="view-mode-switch">{viewMode === 'preview' ? 'Live Preview' : 'Code Editor'}</Label>
+              </div>
+              {result?.dAppCode && (
+                <Button onClick={handleCopy} size="icon" variant="ghost" className="h-8 w-8">
+                  {hasCopied ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
+                </Button>
+              )}
+            </div>
 
-                <TabsContent value="code" className="flex-1 relative overflow-hidden">
-                  {result?.dAppCode && (
-                    <Button onClick={handleCopy} size="icon" variant="ghost" className="absolute top-2 right-2 z-10 h-8 w-8">
-                      {hasCopied ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
-                    </Button>
-                  )}
-                  <ScrollArea className="h-full">
-                    <pre className="p-4 text-sm"><code className="font-code">{result?.dAppCode || 'Generated code will appear here...'}</code></pre>
-                  </ScrollArea>
-                </TabsContent>
-
-              </Tabs>
+            {viewMode === 'preview' ? (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground p-4 bg-secondary/20 m-4 mt-0 rounded-lg">
+                {step === 'generating' ? <Loader2 className="h-8 w-8 animate-spin"/> : result?.livePreview ? <LivePreviewWrapper code={result.livePreview} /> : 'Live preview will appear here...'}
+              </div>
+            ) : (
+              <div className="flex-1 relative overflow-hidden">
+                <Editor
+                  height="100%"
+                  language="javascript"
+                  theme="vs-dark"
+                  value={result?.dAppCode || '// Generated code will appear here...'}
+                  options={{
+                    readOnly: false,
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                  }}
+                />
+              </div>
+            )}
           </Card>
         </div>
       </div>

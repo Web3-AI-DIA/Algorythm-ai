@@ -16,37 +16,37 @@ const freePlan = {
     priceId: ''
   };
 
-const creditPacks = [
+const subscriptionPlans = [
   {
-    title: 'Starter Pack',
+    title: 'Starter',
     price: '$25',
     pricePeriod: '/ month',
     description: 'Perfect for a few small projects.',
-    features: ['✓ 40 Credits', '✓ Monthly subscription', '✓ Standard Support'],
+    features: ['✓ 40 Credits/month', '✓ Monthly subscription', '✓ Standard Support'],
     credits: 40,
-    priceId: process.env.STRIPE_STARTER_PACK_PRICE_ID,
-    nowPaymentsLink: process.env.NOWPAYMENTS_STARTER_PACK_LINK,
+    priceId: process.env.STRIPE_STARTER_PLAN_PRICE_ID,
+    nowPaymentsLink: process.env.NOWPAYMENTS_STARTER_PLAN_LINK,
   },
   {
-    title: 'Pro Pack',
+    title: 'Pro',
     price: '$50',
     pricePeriod: '/ month',
     description: 'Ideal for serious hobbyists and frequent users.',
-    features: ['✓ 100 Credits', '✓ Monthly subscription', '✓ Priority Support'],
+    features: ['✓ 100 Credits/month', '✓ Monthly subscription', '✓ Priority Support'],
     credits: 100,
     isFeatured: true,
-    priceId: process.env.STRIPE_PRO_PACK_PRICE_ID,
-    nowPaymentsLink: process.env.NOWPAYMENTS_PRO_PACK_LINK,
+    priceId: process.env.STRIPE_PRO_PLAN_PRICE_ID,
+    nowPaymentsLink: process.env.NOWPAYMENTS_PRO_PLAN_LINK,
   },
   {
-    title: 'Scale Pack',
+    title: 'Scale',
     price: '$100',
     pricePeriod: '/ month',
     description: 'For professionals and teams building at scale.',
-    features: ["✓ 250 credits", '✓ Monthly subscription', '✓ Priority Support'],
+    features: ["✓ 250 credits/month", '✓ Monthly subscription', '✓ Priority Support'],
     credits: 250,
-    priceId: process.env.STRIPE_SCALE_PACK_PRICE_ID,
-    nowPaymentsLink: process.env.NOWPAYMENTS_SCALE_PACK_LINK,
+    priceId: process.env.STRIPE_SCALE_PLAN_PRICE_ID,
+    nowPaymentsLink: process.env.NOWPAYMENTS_SCALE_PLAN_LINK,
   },
     {
     title: 'Enterprise',
@@ -55,8 +55,8 @@ const creditPacks = [
     description: 'For power users and enterprise teams.',
     features: ["✓ Unlimited Credits", "✓ Dedicated Support", "✓ Custom Integrations"],
     credits: -1, // Using -1 to represent unlimited
-    priceId: process.env.STRIPE_ENTERPRISE_PACK_PRICE_ID,
-    nowPaymentsLink: process.env.NOWPAYMENTS_ENTERPRISE_PACK_LINK,
+    priceId: process.env.STRIPE_ENTERPRISE_PLAN_PRICE_ID,
+    nowPaymentsLink: process.env.NOWPAYMENTS_ENTERPRISE_PLAN_LINK,
   },
 ];
 
@@ -137,15 +137,15 @@ export default function Home() {
         <div className="container px-4 md:px-6">
            <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline bg-clip-text text-transparent bg-gradient-to-r from-neon-green to-electric-blue">Flexible Credit Packs</h2>
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline bg-clip-text text-transparent bg-gradient-to-r from-neon-green to-electric-blue">Flexible Subscription Plans</h2>
               <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Purchase credits as you go. No subscriptions, no recurring fees. All new users receive free credits to start building.
+                Choose a plan that fits your needs and start building. All new users receive free credits to get started.
               </p>
             </div>
           </div>
           <div className="mt-16 mx-auto grid max-w-md grid-cols-1 gap-8 lg:max-w-5xl lg:grid-cols-4">
              <PricingCard {...freePlan} />
-            {creditPacks.map((plan) => (
+            {subscriptionPlans.map((plan) => (
               <PricingCard key={plan.title} {...plan} />
             ))}
           </div>
