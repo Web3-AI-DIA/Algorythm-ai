@@ -1,5 +1,3 @@
-'use server';
-
 import * as admin from 'firebase-admin';
 
 // Check if the service account details are available and not placeholders
