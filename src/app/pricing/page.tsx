@@ -19,8 +19,8 @@ const creditPacks = [
     description: 'Perfect for a few small projects.',
     features: ['✓ 40 Credits', '✓ Monthly subscription', '✓ Standard Support'],
     credits: 40,
-    priceId: process.env.STRIPE_STARTER_PACK_PRICE_ID,
-    nowPaymentsLink: process.env.NOWPAYMENTS_STARTER_PACK_LINK,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_STARTER_PACK_PRICE_ID,
+    nowPaymentsLink: process.env.NEXT_PUBLIC_NOWPAYMENTS_STARTER_PACK_LINK,
   },
   {
     title: 'Pro Pack',
@@ -30,8 +30,8 @@ const creditPacks = [
     features: ['✓ 100 Credits', '✓ Monthly subscription', '✓ Priority Support'],
     credits: 100,
     isFeatured: true,
-    priceId: process.env.STRIPE_PRO_PACK_PRICE_ID,
-    nowPaymentsLink: process.env.NOWPAYMENTS_PRO_PACK_LINK,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PACK_PRICE_ID,
+    nowPaymentsLink: process.env.NEXT_PUBLIC_NOWPAYMENTS_PRO_PACK_LINK,
   },
   {
     title: 'Scale Pack',
@@ -40,8 +40,8 @@ const creditPacks = [
     description: 'For professionals and teams building at scale.',
     features: ["✓ 250 credits", '✓ Monthly subscription', '✓ Priority Support'],
     credits: 250,
-    priceId: process.env.STRIPE_SCALE_PACK_PRICE_ID,
-    nowPaymentsLink: process.env.NOWPAYMENTS_SCALE_PACK_LINK,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_SCALE_PACK_PRICE_ID,
+    nowPaymentsLink: process.env.NEXT_PUBLIC_NOWPAYMENTS_SCALE_PACK_LINK,
   },
   {
     title: 'Enterprise',
@@ -50,8 +50,8 @@ const creditPacks = [
     description: 'For power users and enterprise teams.',
     features: ["✓ Unlimited Credits", "✓ Dedicated Support", "✓ Custom Integrations"],
     credits: -1, // Using -1 to represent unlimited
-    priceId: process.env.STRIPE_ENTERPRISE_PACK_PRICE_ID,
-    nowPaymentsLink: process.env.NOWPAYMENTS_ENTERPRISE_PACK_LINK,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_PACK_PRICE_ID,
+    nowPaymentsLink: process.env.NEXT_PUBLIC_NOWPAYMENTS_ENTERPRISE_PACK_LINK,
   },
 ];
 
