@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/firebase/admin';
-import * as admin from 'firebase-admin';
+import { getAdminDb, getAdminAuth } from '@/firebase/admin';
 import { SiweMessage } from 'siwe';
 import { v4 as uuidv4 } from 'uuid';
 
+/**
+ * Use getAdminDb/getAdminAuth at request time.
+ */
+
 async function getOrCreateUser(address: string) {
-  const userDocRef = adminDb!.collection('users').doc(address);
+  const adminDb = getAdminDb();
+  const userDocRef = adminDb.collection('users').doc(address);
   const userDoc = await userDocRef.get();
 
   if (userDoc.exists()) {
     return userDoc.data();
   }
 
-  // Create new user if they don't exist
   const newUser = {
     id: address,
     credits: 5,
@@ -25,7 +28,10 @@ async function getOrCreateUser(address: string) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!adminDb) {
+  const adminDb = getAdminDb();
+  const adminAuth = getAdminAuth();
+
+  if (!adminDb || !adminAuth) {
     return NextResponse.json({ error: 'Admin SDK not initialized' }, { status: 500 });
   }
 
@@ -44,30 +50,28 @@ export async function POST(req: NextRequest) {
       const siweMessage = new SiweMessage(message);
       const fields = await siweMessage.verify({ signature });
 
-      // Update nonce to prevent replay attacks
       const newNonce = uuidv4();
       const userDocRef = adminDb.collection('users').doc(fields.data.address);
       await userDocRef.update({ nonce: newNonce });
 
       // Create a custom token for Firebase Authentication
-      const customToken = await admin.auth().createCustomToken(fields.data.address);
-      
+      const customToken = await adminAuth.createCustomToken(fields.data.address);
+
       return NextResponse.json({ token: customToken });
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error: any) {
     console.error('SIWE Error:', error);
-    // Invalidate nonce on error to be safe
-    if(message.address) {
-        try {
-            const newNonce = uuidv4();
-            const userDocRef = adminDb.collection('users').doc(message.address);
-            await userDocRef.update({ nonce: newNonce });
-        } catch (nonceError) {
-            console.error("Failed to invalidate nonce:", nonceError);
-        }
+    if (message?.address) {
+      try {
+        const newNonce = uuidv4();
+        const userDocRef = adminDb.collection('users').doc(message.address);
+        await userDocRef.update({ nonce: newNonce });
+      } catch (nonceError) {
+        console.error('Failed to invalidate nonce:', nonceError);
+      }
     }
     return NextResponse.json({ error: error.message || 'Verification failed' }, { status: 500 });
   }
-}
+    }
